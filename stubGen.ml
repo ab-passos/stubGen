@@ -9,7 +9,7 @@ type functions =
     |  SomeFunction of string * typ * (string * typ * attributes) list option * bool * attributes ;;
 
 let getFileNameWithoutExtension fileNameWithExtension =
-	let substringSize = (String.length fileNameWithExtension) - 3 in
+	let substringSize = (String.length fileNameWithExtension) - 2 in
 	String.sub fileNameWithExtension 0 substringSize
 ;;
 
@@ -94,7 +94,7 @@ let rec printFunctionSignature list =
 let printCallbackPointerVariableName functionName = "cb_" ^ functionName;;
 
 let printCounterPerFunction functionName =
-	"count_of_" ^ functionName ^ " = 0;\n"
+	"count_of_" ^ functionName
 ;;
 
 let rec getListOfFunctionsNames list =
@@ -109,7 +109,7 @@ let rec printCallbackPointer list =
 	match list with
 	| functionName :: li -> 
 					"static " ^ printCallbackType functionName ^  " " ^ printCallbackPointerVariableName functionName ^ 
-					" = NULL;\n" ^ "static int" ^ printCounterPerFunction functionName ^
+					" = NULL;\n" ^ "static int " ^ printCounterPerFunction functionName ^ " = 0;\n" ^ 
 					printCallbackPointer li
 	| [] -> "\n"
 ;;
@@ -134,26 +134,42 @@ let rec getListOfFunctions list =
 let rec printResetStubsBody listOfFunctionNames =
 	match listOfFunctionNames with
 	| functionName::li -> printCallbackPointerVariableName functionName ^ " = NULL;\n" 
-						  ^ printCounterPerFunction functionName ^ printResetStubsBody li
+						  ^ printCounterPerFunction functionName ^ " = 0;\n" ^ printResetStubsBody li
 	| [] -> ""
+;;
 
+let rec printGettersForCounters listOfFunctionNames = 
+	match listOfFunctionNames with
+	| functionName::li -> 
+	            let variableName = printCounterPerFunction functionName in
+				"int get_" ^ variableName ^ "(void){\n" ^ 
+				"   return " ^ variableName ^ ";\n}\n" ^ printGettersForCounters li 
+	| [] -> "\n"
+;;
 
 let printResetStubs (fileName : string) listOfFunctionNames =
 	"/* reset function for stubs*/\n" ^ 
 	"void reset_" ^ fileName ^ "(void){ \n" ^
 	printResetStubsBody listOfFunctionNames ^ 
-	"};"
-
+	"}\n"
+;;
 
 let () = 
 	let cilFile = Frontc.parse "test.h" () in 
 	let result = getListOfFunctions cilFile.globals in
 	let fileNameWithoutPath = getFileNameWithoutPath cilFile in 
 	let onlyFunctionNames = getListOfFunctionsNames result in
-	Printf.printf "%s%s%s%s"
+	Printf.printf "%s%s%s%s\n%s"
 	(fileNameWithoutPath)
 	(printFunctionSignature result)
 	(printCallbackPointer onlyFunctionNames)
 	(printResetStubs (getFileNameWithoutExtension (fileNameWithoutPath)) onlyFunctionNames)
+	(printGettersForCounters onlyFunctionNames)
 ;;
 
+(*
+ocamltop call
+#use "topfind";;
+#require "cil";;
+#use "stubGen.ml";;
+*)
