@@ -1,4 +1,6 @@
-
+open Cil
+open Pretty
+module E = Errormsg
 module F = Frontc
 module C = Cil
 
@@ -13,7 +15,10 @@ let getFileNameWithoutExtension fileNameWithExtension =
 
 let getFileNameWithoutPath cilFileNameWithPath = 
 	let splitListWithPaths = Str.split (Str.regexp "/") cilFileNameWithPath.fileName in
-	List.hd (List.rev splitListWithPaths) ^ "\n"
+	if List.length splitListWithPaths == 1 then 
+		cilFileNameWithPath.fileName
+	else
+		List.hd (List.rev splitListWithPaths) ^ "\n"
 ;;
 
 let isSystemFunction (str : string) = 
@@ -139,8 +144,9 @@ let printResetStubs (fileName : string) listOfFunctionNames =
 	printResetStubsBody listOfFunctionNames ^ 
 	"};"
 
+
 let () = 
-	let cilFile = Frontc.parse "../test/test.h" () in 
+	let cilFile = Frontc.parse "test.h" () in 
 	let result = getListOfFunctions cilFile.globals in
 	let fileNameWithoutPath = getFileNameWithoutPath cilFile in 
 	let onlyFunctionNames = getListOfFunctionsNames result in
@@ -150,3 +156,4 @@ let () =
 	(printCallbackPointer onlyFunctionNames)
 	(printResetStubs (getFileNameWithoutExtension (fileNameWithoutPath)) onlyFunctionNames)
 ;;
+
