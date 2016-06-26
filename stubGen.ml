@@ -154,17 +154,27 @@ let printResetStubs (fileName : string) listOfFunctionNames =
 	"}\n"
 ;;
 
+
+let rec printSettersForCallBacks listOfFunctionNames = 
+	match listOfFunctionNames with
+	| functionName::li -> let variableName = printCallbackPointerVariableName functionName in
+	          let variableType = printCallbackType functionName in 
+			"void set_" ^ variableName ^ "(" ^ variableType ^ " func){\n" ^
+			variableName ^ " = func;\n}\n" ^ printSettersForCallBacks li 
+	| [] -> "\n"
+
 let () = 
 	let cilFile = Frontc.parse "test.h" () in 
 	let result = getListOfFunctions cilFile.globals in
 	let fileNameWithoutPath = getFileNameWithoutPath cilFile in 
 	let onlyFunctionNames = getListOfFunctionsNames result in
-	Printf.printf "%s%s%s%s\n%s"
+	Printf.printf "%s\n%s%s%s\n%s%s"
 	(fileNameWithoutPath)
 	(printFunctionSignature result)
 	(printCallbackPointer onlyFunctionNames)
 	(printResetStubs (getFileNameWithoutExtension (fileNameWithoutPath)) onlyFunctionNames)
 	(printGettersForCounters onlyFunctionNames)
+	(printSettersForCallBacks onlyFunctionNames)
 ;;
 
 (*
@@ -172,4 +182,9 @@ ocamltop call
 #use "topfind";;
 #require "cil";;
 #use "stubGen.ml";;
+
+ocamlopt -c -I /Users/andrepassos/.opam/system/lib/cil/ stubGen.ml
+
+ocamlopt -ccopt -L/Users/andrepassos/.opam/system/lib/cil/ -o main unix.cmxa str.cmxa nums.cmxa /Users/andrepassos/.opam/system/lib/cil/cil.cmxa stubGen.cmx
+
 *)

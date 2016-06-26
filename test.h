@@ -1,3 +1,6 @@
+#include "test.h"
+
+typedef int ASML_result;
 
 void f1();
 
