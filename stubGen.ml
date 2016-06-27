@@ -1,3 +1,4 @@
+open Cmdliner
 open Cil
 open Pretty
 module E = Errormsg
@@ -163,6 +164,24 @@ let rec printSettersForCallBacks listOfFunctionNames =
 			variableName ^ " = func;\n}\n" ^ printSettersForCallBacks li 
 	| [] -> "\n"
 
+
+let revolt filesName = Printf.printf "%s\n" (String.concat ", " filesName)
+
+let files = Arg.(non_empty & pos_all file [] & info [] ~docv:"FILE")
+
+let revolt_t = 
+	let doc = "stubGen - Stub generator" in
+  	let man = [`S "DESCRIPTION"] in
+	Term.(const revolt $ files),
+    Term.info "stubGen" ~version:"0.0.1" ~doc ~man
+
+let () = 
+match Term.eval (revolt_t) with
+| `Error _ -> exit 1 
+| _ -> exit 0
+;;
+
+(*
 let () = 
 	let cilFile = Frontc.parse "test.h" () in 
 	let result = getListOfFunctions cilFile.globals in
@@ -176,7 +195,7 @@ let () =
 	(printGettersForCounters onlyFunctionNames)
 	(printSettersForCallBacks onlyFunctionNames)
 ;;
-
+*)
 (*
 ocamltop call
 #use "topfind";;
