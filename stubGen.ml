@@ -165,37 +165,42 @@ let rec printSettersForCallBacks listOfFunctionNames =
 	| [] -> "\n"
 
 
-let revolt filesName = Printf.printf "%s\n" (String.concat ", " filesName)
+(* Write message to file *)
+let writeToFile file message = 
+	let oc = open_out file in    (* create or truncate file, return channel *)
+	Printf.fprintf oc "%s\n" message;   (* write something *)   
+	close_out oc;;                      (* flush and close the channel *)
+
+let stubGen_main fileName = 
+	let cilFile = Frontc.parse fileName () in 
+	let result = getListOfFunctions cilFile.globals in
+	let fileNameWithoutPath = getFileNameWithoutPath cilFile in 
+	let onlyFunctionNames = getListOfFunctionsNames result in
+	let result = 
+	(printFunctionSignature result) ^ "\n" ^ 
+	(printCallbackPointer onlyFunctionNames) ^ "\n" ^ 
+	(printResetStubs (getFileNameWithoutExtension (fileNameWithoutPath)) onlyFunctionNames) ^ "\n" ^ 
+	(printGettersForCounters onlyFunctionNames) ^ "\n" ^ 
+	(printSettersForCallBacks onlyFunctionNames) in
+	writeToFile ((getFileNameWithoutExtension fileNameWithoutPath)^"_stub.h") result
+;;
+
+let parseFiles filesName = List.map stubGen_main filesName
 
 let files = Arg.(non_empty & pos_all file [] & info [] ~docv:"FILE")
 
-let revolt_t = 
+let stubGen_t = 
 	let doc = "stubGen - Stub generator" in
   	let man = [`S "DESCRIPTION"] in
-	Term.(const revolt $ files),
+	Term.(const parseFiles $ files),
     Term.info "stubGen" ~version:"0.0.1" ~doc ~man
 
 let () = 
-match Term.eval (revolt_t) with
+match Term.eval (stubGen_t) with
 | `Error _ -> exit 1 
 | _ -> exit 0
 ;;
 
-(*
-let () = 
-	let cilFile = Frontc.parse "test.h" () in 
-	let result = getListOfFunctions cilFile.globals in
-	let fileNameWithoutPath = getFileNameWithoutPath cilFile in 
-	let onlyFunctionNames = getListOfFunctionsNames result in
-	Printf.printf "%s\n%s%s%s\n%s%s"
-	(fileNameWithoutPath)
-	(printFunctionSignature result)
-	(printCallbackPointer onlyFunctionNames)
-	(printResetStubs (getFileNameWithoutExtension (fileNameWithoutPath)) onlyFunctionNames)
-	(printGettersForCounters onlyFunctionNames)
-	(printSettersForCallBacks onlyFunctionNames)
-;;
-*)
 (*
 ocamltop call
 #use "topfind";;
