@@ -55,6 +55,14 @@ let rec giveFunctionsNames list =
 	| [] -> Printf.printf "END\n"
 ;;
 
+let printDefaultType returnType = 
+	match returnType with
+	| TVoid(_) -> "//void"
+	| TInt(_) -> "return 0;"
+	| TFloat(_) -> "return 0.0;"
+	| _ -> ""
+;;
+
 let printType (t : typ) = 
 	match t with
 	| TVoid(_) -> "void"
@@ -74,10 +82,23 @@ let rec printArgumentList list =
 	| [] -> ""
 ;;
 
+let rec printArgumentVariablesList list =
+	match list with
+	| (s, t, a) :: [] -> s
+	| (s, t, a) :: li -> s ^ ", " ^ printArgumentVariablesList li
+	| [] -> ""
+;;
+
 let hasArguments arg =
 	match arg with
 	| None -> ""
 	| Some l -> printArgumentList l
+;;
+
+let printArgumentVariables arg =
+	match arg with
+	| None -> ""
+	| Some l -> printArgumentVariablesList l
 ;;
 
 let printCallbackType functionName = "cb_" ^ functionName ^ "_t";;
@@ -162,20 +183,55 @@ let rec printSettersForCallBacks listOfFunctionNames =
 			"void set_" ^ variableName ^ "(" ^ variableType ^ " func){\n" ^
 			variableName ^ " = func;\n}\n" ^ printSettersForCallBacks li 
 	| [] -> "\n"
-
-let () = 
-	let cilFile = Frontc.parse "test.h" () in 
-	let result = getListOfFunctions cilFile.globals in
-	let fileNameWithoutPath = getFileNameWithoutPath cilFile in 
-	let onlyFunctionNames = getListOfFunctionsNames result in
-	Printf.printf "%s\n%s%s%s\n%s%s"
-	(fileNameWithoutPath)
-	(printFunctionSignature result)
-	(printCallbackPointer onlyFunctionNames)
-	(printResetStubs (getFileNameWithoutExtension (fileNameWithoutPath)) onlyFunctionNames)
-	(printGettersForCounters onlyFunctionNames)
-	(printSettersForCallBacks onlyFunctionNames)
 ;;
+
+let printCounterIncrement functionName = 
+	printCounterPerFunction functionName ^ "++;"
+;;
+
+let printIfStatement functionName argumentList returnType= 
+	"if(" ^ printCallbackPointerVariableName functionName ^ "){\n" ^ 
+	"\t return " ^ printCallbackPointerVariableName functionName ^ 
+			"("^ printArgumentVariables argumentList ^");\n}\n" ^ 
+			"else {\n" ^ 
+			"\t" ^ printDefaultType returnType^ "\n}"
+;;
+
+(*
+(printArgumentVariablesList argumentList)
+*)
+
+let rec printStubFunction listOfFunctions =
+	match listOfFunctions with 
+	| SomeFunction (functionName, returnType, argumentList, someBool, attr) :: li -> 
+		printType returnType ^ " " ^ functionName ^ "(" ^ hasArguments argumentList ^ "){\n" ^ 
+		printCounterIncrement functionName ^ "\n" ^ (printIfStatement  functionName argumentList returnType) ^  "\n}\n\n" ^ printStubFunction li
+	| NoFunction :: li -> printStubFunction li
+	| [] -> "\n"
+;;
+
+(* Write message to file *)
+let writeToFile file message = 
+	let oc = open_out file in    (* create or truncate file, return channel *)
+	Printf.fprintf oc "%s\n" message;   (* write something *)   
+	close_out oc;;                      (* flush and close the channel *)
+
+let stubGen_main fileName = 
+	let cilFile = Frontc.parse fileName () in 
+	let listOfFunctions = getListOfFunctions cilFile.globals in
+	let fileNameWithoutPath = getFileNameWithoutPath cilFile in 
+	let onlyFunctionNames = getListOfFunctionsNames listOfFunctions in
+	let result = 
+	"#include<stdio.h>\n" ^ 
+	(printFunctionSignature listOfFunctions) ^ "\n" ^ 
+	(printCallbackPointer onlyFunctionNames) ^ "\n" ^ 
+	(printResetStubs (getFileNameWithoutExtension (fileNameWithoutPath)) onlyFunctionNames) ^ "\n" ^ 
+	(printGettersForCounters onlyFunctionNames) ^ "\n" ^ 
+	(printSettersForCallBacks onlyFunctionNames) ^ "\n" ^
+	(printStubFunction listOfFunctions) in
+	writeToFile ((getFileNameWithoutExtension fileNameWithoutPath)^"_stub.h") result
+;;
+
 
 (*
 ocamltop call
