@@ -55,11 +55,12 @@ let rec giveFunctionsNames list =
 	| [] -> Printf.printf "END\n"
 ;;
 
-let printDefaultType returnType = 
+let rec printDefaultType returnType = 
 	match returnType with
 	| TVoid(_) -> "//void"
 	| TInt(_) -> "return 0;"
 	| TFloat(_) -> "return 0.0;"
+    | TNamed(typeinfo,_) -> printDefaultType typeinfo.ttype
 	| _ -> ""
 ;;
 
@@ -68,6 +69,7 @@ let printType (t : typ) =
 	| TVoid(_) -> "void"
 	| TInt(_) -> "int"
 	| TFloat(_) -> "float"
+	| TNamed(typeinfo,_) -> typeinfo.tname
 	| _ -> ""
 ;;
 
@@ -189,9 +191,15 @@ let printCounterIncrement functionName =
 	printCounterPerFunction functionName ^ "++;"
 ;;
 
+let bodyOfIfStatement functionName returnType =
+	match returnType with
+	| TVoid(_) -> "\t " ^ printCallbackPointerVariableName functionName 
+	| _ -> "\t return " ^ printCallbackPointerVariableName functionName
+;;
+
 let printIfStatement functionName argumentList returnType= 
 	"if(" ^ printCallbackPointerVariableName functionName ^ "){\n" ^ 
-	"\t return " ^ printCallbackPointerVariableName functionName ^ 
+	bodyOfIfStatement functionName returnType ^ 
 			"("^ printArgumentVariables argumentList ^");\n}\n" ^ 
 			"else {\n" ^ 
 			"\t" ^ printDefaultType returnType^ "\n}"
@@ -201,6 +209,8 @@ let printIfStatement functionName argumentList returnType=
 (printArgumentVariablesList argumentList)
 *)
 
+
+(*BUG: if the function returns void then it should not use void*)
 let rec printStubFunction listOfFunctions =
 	match listOfFunctions with 
 	| SomeFunction (functionName, returnType, argumentList, someBool, attr) :: li -> 
@@ -208,6 +218,31 @@ let rec printStubFunction listOfFunctions =
 		printCounterIncrement functionName ^ "\n" ^ (printIfStatement  functionName argumentList returnType) ^  "\n}\n\n" ^ printStubFunction li
 	| NoFunction :: li -> printStubFunction li
 	| [] -> "\n"
+;;
+
+let rec findType element =
+	match element with
+	| TVoid(_) -> "void"
+	| TInt(_,_) -> "int"
+	| TFloat(_,_) -> "float"
+	| TPtr(_,_) -> "ptr"
+	| TArray(_,_,_) -> "array"
+	| TNamed(typeinfo,_) -> findType typeinfo.ttype
+	| TComp(_,_) -> "comp"
+	| _ -> ""
+;;
+
+let rec getTypedefType list =
+	match list with
+	| (s,t)::li -> s ^ " " ^ findType t ^ ", " ^getTypedefType li
+	| [] -> "\n"
+
+
+let rec getListOfTypedefs list =
+	match list with
+	| GType(typeinfo, _)::li -> (typeinfo.tname, typeinfo.ttype) :: getListOfTypedefs li
+	| el::li -> getListOfTypedefs li 
+	| [] -> []
 ;;
 
 (* Write message to file *)
@@ -221,8 +256,11 @@ let stubGen_main fileName =
 	let listOfFunctions = getListOfFunctions cilFile.globals in
 	let fileNameWithoutPath = getFileNameWithoutPath cilFile in 
 	let onlyFunctionNames = getListOfFunctionsNames listOfFunctions in
+	let listOfTypedefs = getListOfTypedefs cilFile.globals in
+	let typedefs = getTypedefType listOfTypedefs in
 	let result = 
-	"#include<stdio.h>\n" ^ 
+	"#include <stdio.h>\n" ^
+	"//" ^ typedefs ^ "\n" ^
 	(printFunctionSignature listOfFunctions) ^ "\n" ^ 
 	(printCallbackPointer onlyFunctionNames) ^ "\n" ^ 
 	(printResetStubs (getFileNameWithoutExtension (fileNameWithoutPath)) onlyFunctionNames) ^ "\n" ^ 
