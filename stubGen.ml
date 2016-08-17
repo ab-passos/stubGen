@@ -28,7 +28,7 @@ let isSystemFunction (str : string) =
 	then true 
 	else false;;
 
-
+(*
 let rec printType (t : typ) = 
 	match t with
 	| TVoid(_) ->  Printf.printf "Void\n"
@@ -54,6 +54,7 @@ let rec giveFunctionsNames list =
 	| _::li -> giveFunctionsNames li
 	| [] -> Printf.printf "END\n"
 ;;
+*)
 
 let rec printDefaultType returnType = 
 	match returnType with
@@ -61,15 +62,17 @@ let rec printDefaultType returnType =
 	| TInt(_) -> "return 0;"
 	| TFloat(_) -> "return 0.0;"
     | TNamed(typeinfo,_) -> printDefaultType typeinfo.ttype
+    | TPtr(t, _) -> "return 0;"
 	| _ -> ""
 ;;
 
-let printType (t : typ) = 
+let rec printType (t : typ) = 
 	match t with
 	| TVoid(_) -> "void"
 	| TInt(_) -> "int"
 	| TFloat(_) -> "float"
 	| TNamed(typeinfo,_) -> typeinfo.tname
+	| TPtr(t, _) -> printType t ^ "*"
 	| _ -> ""
 ;;
 
@@ -261,13 +264,14 @@ let stubGen_main fileName =
 	let result = 
 	"#include <stdio.h>\n" ^
 	"//" ^ typedefs ^ "\n" ^
+	"#include \"" ^ fileNameWithoutPath ^ "\"\n" ^ 
 	(printFunctionSignature listOfFunctions) ^ "\n" ^ 
 	(printCallbackPointer onlyFunctionNames) ^ "\n" ^ 
 	(printResetStubs (getFileNameWithoutExtension (fileNameWithoutPath)) onlyFunctionNames) ^ "\n" ^ 
 	(printGettersForCounters onlyFunctionNames) ^ "\n" ^ 
 	(printSettersForCallBacks onlyFunctionNames) ^ "\n" ^
 	(printStubFunction listOfFunctions) in
-	writeToFile ((getFileNameWithoutExtension fileNameWithoutPath)^"_stub.h") result
+	writeToFile ((getFileNameWithoutExtension fileNameWithoutPath)^"_stub.c") result
 ;;
 
 
