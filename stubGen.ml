@@ -66,11 +66,34 @@ let rec printDefaultType returnType =
 	| _ -> ""
 ;;
 
+let printIntSubType (t : ikind) =
+	match t with
+	| IChar -> "char"
+	| ISChar -> "signed char"
+	| IUChar -> "unsigned char"
+	| IInt -> "int"
+	| IUInt -> "unsigned int"
+	| IShort -> "short"
+	| IUShort -> "unsigned short"
+	| ILong -> "long"
+	| IULong -> "unsigned ling"
+	| ILongLong -> "long long"
+	| IULongLong -> "unsigned long long"
+	| IBool -> "_Bool"
+;;
+
+let printFloatSubType (t : fkind) =
+	match t with
+	| FFloat -> "float"
+	| FDouble -> "double"
+	| FLongDouble -> "long double"
+;;
+
 let rec printType (t : typ) = 
 	match t with
 	| TVoid(_) -> "void"
-	| TInt(_) -> "int"
-	| TFloat(_) -> "float"
+	| TInt(subType, _) -> printIntSubType subType
+	| TFloat(subType, _) -> printFloatSubType subType
 	| TNamed(typeinfo,_) -> typeinfo.tname
 	| TPtr(t, _) -> printType t ^ "*"
 	| _ -> ""

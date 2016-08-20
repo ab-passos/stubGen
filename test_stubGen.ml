@@ -9,7 +9,7 @@ let t1 =
     (fun () -> Assert.equal_int 2 2)
 ;;
 
-(*
+
 let test_isSystemFunction = 
 	Test.make_simple_test
 	~title:"Is system function test"
@@ -69,7 +69,14 @@ let test_PrintType =
 		StubGen.printType
 		["void", TVoid([]);
 		 "int", TInt(IInt,[]);
-		 "float", TFloat(FFloat,[])]
+		 "float", TFloat(FFloat,[]);
+		 "char", TInt(IChar, []);
+		 "unsigned char", TInt(IUChar, []);
+		 "unsigned short", TInt(IUShort, []);
+		 "long long", TInt(ILongLong, []);
+		 "double",TFloat(FDouble,[]);
+		 "long double",TFloat(FLongDouble,[])
+		 ]
 
 
 
@@ -79,6 +86,8 @@ let test_PrintDefaultType =
 		StubGen.printDefaultType
 		["//void", TVoid([]);
 		 "return 0;", TInt(IInt,[]);
+		 "return 0;", TInt(IUChar,[]);
+		 "return 0;", TInt(IChar,[]);
 		 "return 0.0;", TFloat(FFloat,[]);
 		 "return 0;", TNamed(
 		 			{tname =  "Result";
@@ -94,12 +103,5 @@ let () =
   				  test_isSystemFunction;
   				  test_PrintType;
   				  test_PrintDefaultType;
-  				  ]
-;;
-
-*)
-
-let () = 
-  Test.run_tests [t1;
   				  ]
 ;;

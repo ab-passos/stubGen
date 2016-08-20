@@ -1,14 +1,13 @@
 #include <stdio.h>
 //Result int, Result2 int, 
+
 #include "test.h"
-
-
 typedef void (*cb_f1_t)();
 typedef int (*cb_f2_t)(int a);
 typedef void (*cb_f3_t)(float f, int i);
 typedef Result (*cb_f4_t)();
 typedef Result2 (*cb_f5_t)(Result i);
-typedef int* (*cb_f6_t)();
+typedef char* (*cb_f6_t)();
 
 
 static cb_f1_t cb_f1 = NULL;
