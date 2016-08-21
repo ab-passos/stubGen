@@ -2,14 +2,7 @@
 //Result int, Result2 int, 
 
 #include "test.h"
-typedef void (*cb_f1_t)();
-typedef int (*cb_f2_t)(int a);
-typedef void (*cb_f3_t)(float f, int i);
-typedef Result (*cb_f4_t)();
-typedef Result2 (*cb_f5_t)(Result i);
-typedef char* (*cb_f6_t)();
-
-
+#include "test_stub.h"
 static cb_f1_t cb_f1 = NULL;
 static int count_of_f1 = 0;
 static cb_f2_t cb_f2 = NULL;

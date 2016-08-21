@@ -328,18 +328,19 @@ let stubGen_main fileName =
 	let onlyFunctionNames = getListOfFunctionsNames listOfFunctions in
 	let listOfTypedefs = getListOfTypedefs cilFile.globals in
 	let typedefs = getTypedefType listOfTypedefs in
+	let stubHeaderName = (getFileNameWithoutExtension fileNameWithoutPath)^"_stub.h" in
 	let result = 
 	"#include <stdio.h>\n" ^
 	"//" ^ typedefs ^ "\n" ^
 	"#include \"" ^ fileNameWithoutPath ^ "\"\n" ^ 
-	(printFunctionSignature listOfFunctions) ^ "\n" ^ 
+	"#include \"" ^ stubHeaderName ^ "\"\n" ^
 	(printCallbackPointer onlyFunctionNames) ^ "\n" ^ 
 	(printResetStubs (getFileNameWithoutExtension (fileNameWithoutPath)) onlyFunctionNames) ^ "\n" ^ 
 	(printGettersForCounters onlyFunctionNames) ^ "\n" ^ 
 	(printSettersForCallBacks onlyFunctionNames) ^ "\n" ^
 	(printStubFunction listOfFunctions) in
 	writeToFile ((getFileNameWithoutExtension fileNameWithoutPath)^"_stub.c") result;
-	writeToFile ((getFileNameWithoutExtension fileNameWithoutPath)^"_stub.h") (generateHeaderFile fileNameWithoutPath listOfFunctions onlyFunctionNames)
+	writeToFile stubHeaderName (generateHeaderFile fileNameWithoutPath listOfFunctions onlyFunctionNames)
 ;;
 
 
