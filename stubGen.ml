@@ -187,14 +187,26 @@ let rec printResetStubsBody listOfFunctionNames =
 	| [] -> ""
 ;;
 
+let rec printGettersForCountersFunctionDeclaration variableName = 
+				"int get_" ^ variableName ^ "(void)";
+;;
+
 let rec printGettersForCounters listOfFunctionNames = 
 	match listOfFunctionNames with
 	| functionName::li -> 
 	            let variableName = printCounterPerFunction functionName in
-				"int get_" ^ variableName ^ "(void){\n" ^ 
+				printGettersForCountersFunctionDeclaration variableName ^ "{\n" ^ 
 				"   return " ^ variableName ^ ";\n}\n" ^ printGettersForCounters li 
 	| [] -> "\n"
 ;;
+
+let rec printGettersForCountersAllFunctionsDeclaration listOfFunctionNames = 
+match listOfFunctionNames with
+	| functionName::li -> 
+	            let variableName = printCounterPerFunction functionName in
+				printGettersForCountersFunctionDeclaration variableName ^ ";\n" ^ printGettersForCountersAllFunctionsDeclaration li 
+	| [] -> "\n"
+;;	
 
 let printResetStubs (fileName : string) listOfFunctionNames =
 	"/* reset function for stubs*/\n" ^ 
@@ -203,13 +215,24 @@ let printResetStubs (fileName : string) listOfFunctionNames =
 	"}\n"
 ;;
 
+let printSettersForCallBacksDefinition variableName variableType =
+	"void set_" ^ variableName ^ "(" ^ variableType ^ " func)"
+;;
 
 let rec printSettersForCallBacks listOfFunctionNames = 
 	match listOfFunctionNames with
 	| functionName::li -> let variableName = printCallbackPointerVariableName functionName in
 	          let variableType = printCallbackType functionName in 
-			"void set_" ^ variableName ^ "(" ^ variableType ^ " func){\n" ^
+			printSettersForCallBacksDefinition variableName variableType ^ "{\n" ^
 			variableName ^ " = func;\n}\n" ^ printSettersForCallBacks li 
+	| [] -> "\n"
+;;
+
+let rec printAllSettersForCallBacksDefinition listOfFunctionNames = 
+	match listOfFunctionNames with
+	| functionName::li -> let variableName = printCallbackPointerVariableName functionName in
+	        let variableType = printCallbackType functionName in 
+			printSettersForCallBacksDefinition variableName variableType ^ ";\n" ^ printAllSettersForCallBacksDefinition li 
 	| [] -> "\n"
 ;;
 
@@ -271,6 +294,27 @@ let rec getListOfTypedefs list =
 	| [] -> []
 ;;
 
+let printHeaders =
+   "#include <stdio.h>\n"
+;;
+
+let printIncludeStubbedFile fileNameWithoutPath =
+   "#include \"" ^ fileNameWithoutPath ^ "\"\n"
+;;
+
+let printResetFunction fileName= 
+   "void reset_" ^ fileName ^ "(void);"
+;;
+
+let generateHeaderFile fileNameWithoutPath listOfFunctions onlyFunctionNames = 
+	 printHeaders ^ 
+	 printIncludeStubbedFile fileNameWithoutPath ^ 
+	 printFunctionSignature listOfFunctions ^ "\n" ^
+	 printResetFunction (getFileNameWithoutExtension (fileNameWithoutPath)) ^ "\n" ^ 
+	 printGettersForCountersAllFunctionsDeclaration onlyFunctionNames ^ "\n" ^ 
+	 printAllSettersForCallBacksDefinition onlyFunctionNames ^ "\n"
+;;
+
 (* Write message to file *)
 let writeToFile file message = 
 	let oc = open_out file in    (* create or truncate file, return channel *)
@@ -294,7 +338,8 @@ let stubGen_main fileName =
 	(printGettersForCounters onlyFunctionNames) ^ "\n" ^ 
 	(printSettersForCallBacks onlyFunctionNames) ^ "\n" ^
 	(printStubFunction listOfFunctions) in
-	writeToFile ((getFileNameWithoutExtension fileNameWithoutPath)^"_stub.c") result
+	writeToFile ((getFileNameWithoutExtension fileNameWithoutPath)^"_stub.c") result;
+	writeToFile ((getFileNameWithoutExtension fileNameWithoutPath)^"_stub.h") (generateHeaderFile fileNameWithoutPath listOfFunctions onlyFunctionNames)
 ;;
 
 
