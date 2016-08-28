@@ -1,7 +1,6 @@
 #include <stdio.h>
 //Result int, Result2 int, 
 
-#include "test.h"
 #include "test_stub.h"
 static cb_f1_t cb_f1 = NULL;
 static int count_of_f1 = 0;
@@ -15,6 +14,8 @@ static cb_f5_t cb_f5 = NULL;
 static int count_of_f5 = 0;
 static cb_f6_t cb_f6 = NULL;
 static int count_of_f6 = 0;
+static cb_f7_t cb_f7 = NULL;
+static int count_of_f7 = 0;
 
 
 /* reset function for stubs*/
@@ -31,6 +32,8 @@ cb_f5 = NULL;
 count_of_f5 = 0;
 cb_f6 = NULL;
 count_of_f6 = 0;
+cb_f7 = NULL;
+count_of_f7 = 0;
 }
 
 int get_count_of_f1(void){
@@ -51,6 +54,9 @@ int get_count_of_f5(void){
 int get_count_of_f6(void){
    return count_of_f6;
 }
+int get_count_of_f7(void){
+   return count_of_f7;
+}
 
 
 void set_cb_f1(cb_f1_t func){
@@ -70,6 +76,9 @@ cb_f5 = func;
 }
 void set_cb_f6(cb_f6_t func){
 cb_f6 = func;
+}
+void set_cb_f7(cb_f7_t func){
+cb_f7 = func;
 }
 
 
@@ -130,6 +139,17 @@ if(cb_f6){
 }
 else {
 	return 0;
+}
+}
+
+struct MyObj f7(){
+count_of_f7++;
+if(cb_f7){
+	 return cb_f7();
+}
+else {
+	struct MyObj a = {0}; 
+ return a;
 }
 }
 

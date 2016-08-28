@@ -63,6 +63,7 @@ let rec printDefaultType returnType =
 	| TFloat(_) -> "return 0.0;"
     | TNamed(typeinfo,_) -> printDefaultType typeinfo.ttype
     | TPtr(t, _) -> "return 0;"
+    | TComp(t,_) -> if t.cstruct then "struct " ^ t.cname ^ " a = {0}; \n return a;" else ""
 	| _ -> ""
 ;;
 
@@ -96,6 +97,7 @@ let rec printType (t : typ) =
 	| TFloat(subType, _) -> printFloatSubType subType
 	| TNamed(typeinfo,_) -> typeinfo.tname
 	| TPtr(t, _) -> printType t ^ "*"
+	| TComp(t,_) -> if t.cstruct then "struct " ^ t.cname else ""
 	| _ -> ""
 ;;
 
@@ -332,7 +334,6 @@ let stubGen_main fileName =
 	let result = 
 	"#include <stdio.h>\n" ^
 	"//" ^ typedefs ^ "\n" ^
-	"#include \"" ^ fileNameWithoutPath ^ "\"\n" ^ 
 	"#include \"" ^ stubHeaderName ^ "\"\n" ^
 	(printCallbackPointer onlyFunctionNames) ^ "\n" ^ 
 	(printResetStubs (getFileNameWithoutExtension (fileNameWithoutPath)) onlyFunctionNames) ^ "\n" ^ 
