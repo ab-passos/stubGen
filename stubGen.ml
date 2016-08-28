@@ -28,7 +28,7 @@ let isSystemFunction (str : string) =
 	then true 
 	else false;;
 
-
+(*
 let rec printType (t : typ) = 
 	match t with
 	| TVoid(_) ->  Printf.printf "Void\n"
@@ -54,6 +54,7 @@ let rec giveFunctionsNames list =
 	| _::li -> giveFunctionsNames li
 	| [] -> Printf.printf "END\n"
 ;;
+*)
 
 let rec printDefaultType returnType = 
 	match returnType with
@@ -61,15 +62,42 @@ let rec printDefaultType returnType =
 	| TInt(_) -> "return 0;"
 	| TFloat(_) -> "return 0.0;"
     | TNamed(typeinfo,_) -> printDefaultType typeinfo.ttype
+    | TPtr(t, _) -> "return 0;"
+    | TComp(t,_) -> if t.cstruct then "struct " ^ t.cname ^ " a = {0}; \n return a;" else ""
 	| _ -> ""
 ;;
 
-let printType (t : typ) = 
+let printIntSubType (t : ikind) =
+	match t with
+	| IChar -> "char"
+	| ISChar -> "signed char"
+	| IUChar -> "unsigned char"
+	| IInt -> "int"
+	| IUInt -> "unsigned int"
+	| IShort -> "short"
+	| IUShort -> "unsigned short"
+	| ILong -> "long"
+	| IULong -> "unsigned ling"
+	| ILongLong -> "long long"
+	| IULongLong -> "unsigned long long"
+	| IBool -> "_Bool"
+;;
+
+let printFloatSubType (t : fkind) =
+	match t with
+	| FFloat -> "float"
+	| FDouble -> "double"
+	| FLongDouble -> "long double"
+;;
+
+let rec printType (t : typ) = 
 	match t with
 	| TVoid(_) -> "void"
-	| TInt(_) -> "int"
-	| TFloat(_) -> "float"
+	| TInt(subType, _) -> printIntSubType subType
+	| TFloat(subType, _) -> printFloatSubType subType
 	| TNamed(typeinfo,_) -> typeinfo.tname
+	| TPtr(t, _) -> printType t ^ "*"
+	| TComp(t,_) -> if t.cstruct then "struct " ^ t.cname else ""
 	| _ -> ""
 ;;
 
@@ -161,14 +189,26 @@ let rec printResetStubsBody listOfFunctionNames =
 	| [] -> ""
 ;;
 
+let rec printGettersForCountersFunctionDeclaration variableName = 
+				"int get_" ^ variableName ^ "(void)";
+;;
+
 let rec printGettersForCounters listOfFunctionNames = 
 	match listOfFunctionNames with
 	| functionName::li -> 
 	            let variableName = printCounterPerFunction functionName in
-				"int get_" ^ variableName ^ "(void){\n" ^ 
+				printGettersForCountersFunctionDeclaration variableName ^ "{\n" ^ 
 				"   return " ^ variableName ^ ";\n}\n" ^ printGettersForCounters li 
 	| [] -> "\n"
 ;;
+
+let rec printGettersForCountersAllFunctionsDeclaration listOfFunctionNames = 
+match listOfFunctionNames with
+	| functionName::li -> 
+	            let variableName = printCounterPerFunction functionName in
+				printGettersForCountersFunctionDeclaration variableName ^ ";\n" ^ printGettersForCountersAllFunctionsDeclaration li 
+	| [] -> "\n"
+;;	
 
 let printResetStubs (fileName : string) listOfFunctionNames =
 	"/* reset function for stubs*/\n" ^ 
@@ -177,13 +217,24 @@ let printResetStubs (fileName : string) listOfFunctionNames =
 	"}\n"
 ;;
 
+let printSettersForCallBacksDefinition variableName variableType =
+	"void set_" ^ variableName ^ "(" ^ variableType ^ " func)"
+;;
 
 let rec printSettersForCallBacks listOfFunctionNames = 
 	match listOfFunctionNames with
 	| functionName::li -> let variableName = printCallbackPointerVariableName functionName in
 	          let variableType = printCallbackType functionName in 
-			"void set_" ^ variableName ^ "(" ^ variableType ^ " func){\n" ^
+			printSettersForCallBacksDefinition variableName variableType ^ "{\n" ^
 			variableName ^ " = func;\n}\n" ^ printSettersForCallBacks li 
+	| [] -> "\n"
+;;
+
+let rec printAllSettersForCallBacksDefinition listOfFunctionNames = 
+	match listOfFunctionNames with
+	| functionName::li -> let variableName = printCallbackPointerVariableName functionName in
+	        let variableType = printCallbackType functionName in 
+			printSettersForCallBacksDefinition variableName variableType ^ ";\n" ^ printAllSettersForCallBacksDefinition li 
 	| [] -> "\n"
 ;;
 
@@ -245,6 +296,27 @@ let rec getListOfTypedefs list =
 	| [] -> []
 ;;
 
+let printHeaders =
+   "#include <stdio.h>\n"
+;;
+
+let printIncludeStubbedFile fileNameWithoutPath =
+   "#include \"" ^ fileNameWithoutPath ^ "\"\n"
+;;
+
+let printResetFunction fileName= 
+   "void reset_" ^ fileName ^ "(void);"
+;;
+
+let generateHeaderFile fileNameWithoutPath listOfFunctions onlyFunctionNames = 
+	 printHeaders ^ 
+	 printIncludeStubbedFile fileNameWithoutPath ^ 
+	 printFunctionSignature listOfFunctions ^ "\n" ^
+	 printResetFunction (getFileNameWithoutExtension (fileNameWithoutPath)) ^ "\n" ^ 
+	 printGettersForCountersAllFunctionsDeclaration onlyFunctionNames ^ "\n" ^ 
+	 printAllSettersForCallBacksDefinition onlyFunctionNames ^ "\n"
+;;
+
 (* Write message to file *)
 let writeToFile file message = 
 	let oc = open_out file in    (* create or truncate file, return channel *)
@@ -258,16 +330,18 @@ let stubGen_main fileName =
 	let onlyFunctionNames = getListOfFunctionsNames listOfFunctions in
 	let listOfTypedefs = getListOfTypedefs cilFile.globals in
 	let typedefs = getTypedefType listOfTypedefs in
+	let stubHeaderName = (getFileNameWithoutExtension fileNameWithoutPath)^"_stub.h" in
 	let result = 
 	"#include <stdio.h>\n" ^
 	"//" ^ typedefs ^ "\n" ^
-	(printFunctionSignature listOfFunctions) ^ "\n" ^ 
+	"#include \"" ^ stubHeaderName ^ "\"\n" ^
 	(printCallbackPointer onlyFunctionNames) ^ "\n" ^ 
 	(printResetStubs (getFileNameWithoutExtension (fileNameWithoutPath)) onlyFunctionNames) ^ "\n" ^ 
 	(printGettersForCounters onlyFunctionNames) ^ "\n" ^ 
 	(printSettersForCallBacks onlyFunctionNames) ^ "\n" ^
 	(printStubFunction listOfFunctions) in
-	writeToFile ((getFileNameWithoutExtension fileNameWithoutPath)^"_stub.h") result
+	writeToFile ((getFileNameWithoutExtension fileNameWithoutPath)^"_stub.c") result;
+	writeToFile stubHeaderName (generateHeaderFile fileNameWithoutPath listOfFunctions onlyFunctionNames)
 ;;
 
 
